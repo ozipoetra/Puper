@@ -26,7 +26,7 @@ const BROWSER_ARGS = [
   '--noerrdialogs'
 ];
 
-chromium.setGraphicsMode = false;
+// chromium.setGraphicsMode = false;
 
 const server = http.createServer(async (req, res) => {
   try {
