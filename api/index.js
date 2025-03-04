@@ -1,17 +1,11 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-//import { cache } from 'hono/cache';
 import puppeteerCore from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
 const app = new Hono();
 
-const OPTIMAL_VIEWPORT = {
-  width: 1,
-  height: 1,
-  deviceScaleFactor: 0,
-};
-
+const OPTIMAL_VIEWPORT = { width: 1, height: 1, deviceScaleFactor: 1 }; // Adjusted device scale factor
 const BROWSER_ARGS = [
   ...chromium.args,
   '--disable-gpu',
@@ -29,65 +23,66 @@ const BROWSER_ARGS = [
   '--noerrdialogs'
 ];
 
-// Add cache middleware with 24-hour TTL
-app.get(
-  '*',
-  async (c) => {
+let browserInstance;
+async function getBrowserInstance() {
+  if (!browserInstance) {
+    const executablePath = await chromium.executablePath();
+    browserInstance = await puppeteerCore.launch({
+      executablePath,
+      args: BROWSER_ARGS,
+      headless: chromium.headless,
+      defaultViewport: OPTIMAL_VIEWPORT,
+      ignoreHTTPSErrors: true,
+    });
+  }
+  return browserInstance;
+}
+
+app.get('*', async (c) => {
+  try {
+    const { url: urlToVisit, ref = "https://www.google.com" } = c.req.query();
+    if (!urlToVisit) {
+      c.header('Cache-Control', 'no-store');
+      return c.json({ message: 'Missing URL parameter' }, 400);
+    }
+
+    let page;
     try {
-      const { url: urlToVisit, ref = "https://www.google.com" } = c.req.query();
+      const browser = await getBrowserInstance();
+      page = await browser.newPage();
+      await page.setExtraHTTPHeaders({ 'Referer': ref });
+      await page.setRequestInterception(true);
 
-      if (!urlToVisit) {
-        // Bypass cache for error responses
-        c.header('Cache-Control', 'no-store');
-        return c.json({ message: 'Missing URL parameter' }, 400);
-      }
+      page.on('request', (req) => {
+        const allowedResources = ['document', 'script', 'xhr', 'fetch'];
+        allowedResources.includes(req.resourceType()) ? req.continue() : req.abort();
+      });
 
-      let browser;
-      try {
-        const executablePath = await chromium.executablePath();
-        browser = await puppeteerCore.launch({
-          executablePath,
-          args: BROWSER_ARGS,
-          headless: chromium.headless,
-          defaultViewport: OPTIMAL_VIEWPORT,
-          ignoreHTTPSErrors: true,
-        });
+      await page.goto(urlToVisit, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      await page.waitForSelector('div#animeDownloadLink > a', { timeout: 25000 });
+      const content = await page.content();
 
-        const page = await browser.newPage();
-        await page.setExtraHTTPHeaders({ 'Referer': ref });
-        await page.setRequestInterception(true);
-
-        page.on('request', (req) => {
-          const allowedResources = ['document', 'script', 'xhr', 'fetch'];
-          allowedResources.includes(req.resourceType()) ? req.continue() : req.abort();
-        });
-
-        await page.goto(urlToVisit, { waitUntil: 'domcontentloaded', timeout: 25000 });
-        await page.waitForSelector('div#animeDownloadLink > a', { timeout: 25000 });
-
-        const content = await page.content();
-        c.header('Cache-Control', 'public, s-maxage=86400, must-revalidate');
-        return c.html(content);
-      } catch (error) {
-        console.error('Error:', error);
-        c.header('Cache-Control', 'no-store');
-        return c.json({ message: 'Error generating content' }, 500);
-      } finally {
-        if (browser) {
-          try {
-            await browser.close();
-          } catch (error) {
-            console.error('Error closing browser:', error);
-          }
+      c.header('Cache-Control', 'public, s-maxage=86400, must-revalidate');
+      return c.html(content);
+    } catch (error) {
+      console.error('Error:', error);
+      c.header('Cache-Control', 'no-store');
+      return c.json({ message: 'Error generating content' }, 500);
+    } finally {
+      if (page) {
+        try {
+          await page.close();
+        } catch (error) {
+          console.error('Error closing page:', error);
         }
       }
-    } catch (error) {
-      console.error('Unhandled error:', error);
-      c.header('Cache-Control', 'no-store');
-      return c.json({ message: 'Internal server error' }, 500);
     }
+  } catch (error) {
+    console.error('Unhandled error:', error);
+    c.header('Cache-Control', 'no-store');
+    return c.json({ message: 'Internal server error' }, 500);
   }
-);
+});
 
 app.all('*', (c) => {
   c.header('Cache-Control', 'no-store');
