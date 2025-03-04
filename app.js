@@ -20,6 +20,10 @@ const BROWSER_ARGS = [
   '--disable-fonts',
   '--disable-images',
   '--disk-cache-size=104857600',
+  '--disable-session-crashed-bubble',
+  '--disable-accelerated-2d-canvas',
+  '--no-first-run',
+  '--noerrdialogs'
 ];
 
 chromium.setGraphicsMode = false;
