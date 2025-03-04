@@ -63,9 +63,9 @@ COPY --from=builder /app .
 # Puppeteer/Chromium configuration
 
 # Create a non-root user
-RUN groupadd -r node && \
-    useradd -r -g node -d /app node && \
-    chown -R node:node /app
+# RUN groupadd -r node && \
+#    useradd -r -g node -d /app node && \
+#    chown -R node:node /app
 
 USER node
 
