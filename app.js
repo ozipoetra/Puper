@@ -77,7 +77,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ message: 'Error generating content' }));
       }
     } finally {
-      if (browser) await browser.close();
+      if (browser) await browser.disconnect();
     }
   } catch (error) {
     console.error('Unhandled error:', error);
