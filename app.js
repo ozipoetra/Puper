@@ -46,7 +46,6 @@ const server = http.createServer(async (req, res) => {
       browser = await puppeteerCore.launch({
         executablePath,
         args: BROWSER_ARGS,
-        userDataDir: '/tmp/chrome-pupet',
         headless: chromium.headless,
         defaultViewport: OPTIMAL_VIEWPORT,
         ignoreHTTPSErrors: true,
