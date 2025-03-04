@@ -58,4 +58,4 @@ COPY --from=builder /app .
 EXPOSE 3000
 
 # Use node --watch for development (remove for production)
-CMD ["node", "app.js"]
+CMD ["node", "api/index.js"]
