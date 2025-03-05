@@ -1,18 +1,12 @@
-import { Hono } from 'hono';
-import { cache } from 'hono/cache'
-import { cors } from 'hono/cors'
-import { etag } from 'hono/etag'
+import { Hono } from 'hono/tiny';
+//import { cache } from 'hono/cache'
+//import { cors } from 'hono/cors'
+//import { etag } from 'hono/etag'
 import { serve } from '@hono/node-server';
 import puppeteerCore from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
 const app = new Hono();
-app.use('*', cors())
-app.use('*', etag())
-app.use(cache({
-    cacheName: 'root',
-    cacheControl: 'max-age=86400',
-  }))
 
 const OPTIMAL_VIEWPORT = { width: 1, height: 1, deviceScaleFactor: 1 }; // Adjusted device scale factor
 const BROWSER_ARGS = [
@@ -71,7 +65,7 @@ app.get('*', async (c) => {
       await page.waitForSelector('div#animeDownloadLink > a', { timeout: 25000 });
       const content = await page.content();
 
-      //c.header('Cache-Control', 'public, s-maxage=86400, must-revalidate');
+      c.header('Cache-Control', 'public, max-age=86400, must-revalidate');
       return c.html(content);
     } catch (error) {
       console.error('Error:', error);
