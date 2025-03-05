@@ -9,6 +9,10 @@ import chromium from '@sparticuz/chromium';
 const app = new Hono();
 app.use('*', cors())
 app.use('*', etag())
+app.use(cache({
+    cacheName: 'root',
+    cacheControl: 'max-age=86400',
+  }))
 
 const OPTIMAL_VIEWPORT = { width: 1, height: 1, deviceScaleFactor: 1 }; // Adjusted device scale factor
 const BROWSER_ARGS = [
@@ -43,10 +47,7 @@ async function getBrowserInstance() {
   return browserInstance;
 }
 
-app.get('*', cache({
-    cacheName: 'root',
-    cacheControl: 'max-age=86400',
-  }), async (c) => {
+app.get('*', async (c) => {
   try {
     const { url: urlToVisit, ref = "https://www.google.com" } = c.req.query();
     if (!urlToVisit) {
